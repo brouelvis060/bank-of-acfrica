@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner de Tickets</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .login-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .scanner-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .scanner-section.active {
+            display: block;
+        }
+
+        #reader {
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .manual-input {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .manual-input input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .stats {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stats h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            margin-top: 20px;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-qrcode"></i> Scanner de Tickets</h1>
+        <p>Scannez les QR codes pour valider les tickets</p>
+    </div>
+
+    <div class="container">
+        <!-- Section de connexion -->
+        <div class="login-section" id="login-section">
+            <h2>Connexion Scanner</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Nom d'utilisateur</label>
+                    <input type="text" id="username" value="scanner" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" value="scanner123" required>
+                </div>
+                <button type="submit" class="btn">Se connecter</button>
+            </form>
+        </div>
+
+        <!-- Section scanner -->
+        <div class="scanner-section" id="scanner-section">
+            <h2>Scanner de tickets</h2>
+            <p>Placez le QR code dans le cadre pour le scanner automatiquement</p>
+            
+            <div id="reader"></div>
+            
+            <div class="manual-input">
+                <h3>Ou saisissez le code manuellement</h3>
+                <input type="text" id="manual-code" placeholder="Code du ticket">
+                <button class="btn" onclick="validateManualCode()">Valider le code</button>
+            </div>
+            
+            <div id="result"></div>
+            
+            <button class="btn logout-btn" onclick="logout()">Se déconnecter</button>
+        </div>
+
+        <!-- Section statistiques -->
+        <div class="stats" id="stats-section" style="display: none;">
+            <h3>Statistiques du jour</h3>
+            <div id="stats-content">
+                <p>Chargement des statistiques...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let html5QrcodeScanner = null;
+
+        // Connexion
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    
+                    // Masquer la connexion et afficher le scanner
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('scanner-section').classList.add('active');
+                    document.getElementById('stats-section').style.display = 'block';
+                    
+                    // Initialiser le scanner QR
+                    initQRScanner();
+                    
+                    // Charger les statistiques
+                    loadStats();
+                } else {
+                    const error = await response.json();
+                    showResult('Erreur de connexion: ' + error.error, 'error');
+                }
+            } catch (error) {
+                showResult('Erreur de connexion', 'error');
+            }
+        });
+
+        // Initialiser le scanner QR
+        function initQRScanner() {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                }
+            );
+
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        // Succès du scan
+        function onScanSuccess(decodedText, decodedResult) {
+            try {
+                const ticketData = JSON.parse(decodedText);
+                validateTicket(ticketData.ticket_code);
+            } catch (error) {
+                // Si ce n'est pas du JSON, traiter comme un code simple
+                validateTicket(decodedText);
+            }
+        }
+
+        // Échec du scan
+        function onScanFailure(error) {
+            // Erreur silencieuse pour éviter le spam
+        }
+
+        // Validation manuelle
+        function validateManualCode() {
+            const code = document.getElementById('manual-code').value.trim();
+            if (code) {
+                validateTicket(code);
+                document.getElementById('manual-code').value = '';
+            }
+        }
+
+        // Valider un ticket
+        async function validateTicket(ticketCode) {
+            try {
+                const response = await fetch('/api/tickets/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ticket_code: ticketCode,
+                        scanner_username: currentUser.username
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(`
+                        <strong>✅ Ticket validé !</strong><br>
+                        Événement: ${result.ticket.event_name}<br>
+                        Client: ${result.ticket.customer_name}<br>
+                        Scanné par: ${result.ticket.scanned_by}<br>
+                        Heure: ${new Date(result.ticket.scanned_at).toLocaleTimeString('fr-FR')}
+                    `, 'success');
+                    
+                    // Recharger les statistiques
+                    loadStats();
+                } else {
+                    let errorMessage = result.error;
+                    if (result.scanned_at) {
+                        errorMessage += ` (déjà scanné le ${new Date(result.scanned_at).toLocaleString('fr-FR')})`;
+                    }
+                    showResult(errorMessage, 'error');
+                }
+            } catch (error) {
+                showResult('Erreur lors de la validation', 'error');
+            }
+        }
+
+        // Afficher le résultat
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+            
+            // Effacer après 5 secondes
+            setTimeout(() => {
+                resultDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Charger les statistiques
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/events');
+                const events = await response.json();
+                
+                let statsHTML = '';
+                let totalScanned = 0;
+                let totalValid = 0;
+                
+                for (const event of events) {
+                    const statsResponse = await fetch(`/api/events/${event.id}/stats`);
+                    const stats = await statsResponse.json();
+                    
+                    totalScanned += stats.scanned_tickets || 0;
+                    totalValid += stats.valid_tickets || 0;
+                    
+                    statsHTML += `
+                        <div class="stat-item">
+                            <span>${event.name}</span>
+                            <span>${stats.scanned_tickets || 0}/${stats.total_tickets || 0}</span>
+                        </div>
+                    `;
+                }
+                
+                statsHTML = `
+                    <div class="stat-item">
+                        <strong>Total scannés aujourd'hui</strong>
+                        <strong>${totalScanned}</strong>
+                    </div>
+                    <div class="stat-item">
+                        <strong>Tickets valides restants</strong>
+                        <strong>${totalValid}</strong>
+                    </div>
+                    <hr style="margin: 15px 0; border: none; border-top: 1px solid #f0f0f0;">
+                    ${statsHTML}
+                `;
+                
+                document.getElementById('stats-content').innerHTML = statsHTML;
+            } catch (error) {
+                console.error('Erreur lors du chargement des statistiques:', error);
+            }
+        }
+
+        // Déconnexion
+        function logout() {
+            currentUser = null;
+            
+            // Arrêter le scanner QR
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+                html5QrcodeScanner = null;
+            }
+            
+            // Afficher la connexion et masquer le scanner
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('scanner-section').classList.remove('active');
+            document.getElementById('stats-section').style.display = 'none';
+            
+            // Effacer le résultat
+            document.getElementById('result').innerHTML = '';
+        }
+
+        // Permettre la validation avec Entrée
+        document.getElementById('manual-code').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                validateManualCode();
+            }
+        });
+    </script>
+</body>
+</html>
